@@ -25,6 +25,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 )
@@ -36,10 +37,16 @@ var (
 	version    = flag.String("version", "1.4", "Go version")
 )
 
+var (
+	Name, err = os.Hostname()
+)
+
 const baseChangeURL = "https://go.googlesource.com/go/+/"
 
 func main() {
+
 	flag.Parse()
+
 	changeURL := fmt.Sprintf("%sgo%s", baseChangeURL, *version)
 	http.Handle("/", NewServer(*version, changeURL, *pollPeriod))
 	log.Fatal(http.ListenAndServe(*httpAddr, nil))
@@ -110,13 +117,15 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	hitCount.Add(1)
 	s.mu.RLock()
 	data := struct {
-		URL     string
-		Version string
-		Yes     bool
+		URL      string
+		Version  string
+		Yes      bool
+		Hostname string
 	}{
 		s.url,
 		s.version,
 		s.yes,
+		Name,
 	}
 	s.mu.RUnlock()
 	err := tmpl.Execute(w, data)
@@ -136,5 +145,6 @@ var tmpl = template.Must(template.New("tmpl").Parse(`
 		No. :-(
 	{{end}}
 	</h1>
+	<p>Hello from {{.Hostname}}</p>
 </center></body></html>
 `))
